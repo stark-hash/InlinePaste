@@ -157,30 +157,33 @@ async def inline_paste(client, query):
     if not query.query:
         return
     
-    # Check text length
-    if len(query.query) > 20:  # Adjust threshold as needed
-        try:
-            paste_result = await p_paste(query.query, "txt")
-            
-            if "error" in paste_result:
-                return
-            
-            results = [
-                InlineQueryResultArticle(
-                    title="Large Text Uploaded to Pastebin",
-                    description="Click to view paste link",
-                    input_message_content=InputTextMessageContent(
-                        f"**Pasted Large Text**\n\n" 
-                        f"**Link:** [Click Here]({paste_result['url']})\n"
-                        f"**Raw Link:** [Click Here]({paste_result['raw']})"
-                    )
+    # Handling larger texts for inline paste
+    try:
+        # Always try to paste the full text
+        paste_result = await p_paste(query.query, "txt")
+        
+        if "error" in paste_result:
+            return
+        
+        # Truncate text for description to keep it short
+        preview_text = (query.query[:100] + '...') if len(query.query) > 100 else query.query
+        
+        results = [
+            InlineQueryResultArticle(
+                title="Uploaded Text to Pastebin",
+                description=preview_text,
+                input_message_content=InputTextMessageContent(
+                    f"**Pasted Text**\n\n" 
+                    f"**Link:** [Click Here]({paste_result['url']})\n"
+                    f"**Raw Link:** [Click Here]({paste_result['raw']})"
                 )
-            ]
-            
-            await query.answer(results, cache_time=1)
-        except Exception:
-            pass
-
+            )
+        ]
+        
+        await query.answer(results, cache_time=1)
+    except Exception as e:
+        print(f"Inline paste error: {e}")
+        
 # Automatic large text handler
 @app.on_message(filters.text & filters.group & ~filters.command(["paste", "tgpaste"]))
 async def auto_paste_in_group(client, message):
